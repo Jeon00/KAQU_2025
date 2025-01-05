@@ -8,3 +8,4 @@
 - push할 때 --set-upstream 인자 쓰지 말 것. (예시 : git push origin Team2 까지만 사용)
 
 전영진 확인
+강동륜 확인
