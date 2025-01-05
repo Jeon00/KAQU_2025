@@ -6,3 +6,5 @@
 - 회의를 거치기 전 main branch에 merge하지 말 것.  
 - commit 시 항상 -m 인자를 활용해 무슨 내용인지 밝힐 것 (예시 : git commit -m "수신 기능 00~00줄 수정")
 - push할 때 --set-upstream 인자 쓰지 말 것. (예시 : git push origin Team2 까지만 사용)
+
+전영진 확인
