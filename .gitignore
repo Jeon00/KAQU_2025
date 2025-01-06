@@ -270,3 +270,6 @@ AMENT_IGNORE
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,visualstudiocode,c++,python,ros2
+
+# dynamixel SDK
+DynamixelSDK/
