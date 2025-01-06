@@ -6,4 +6,4 @@ project info (notion link) : https://kasimov.notion.site/KAQU-81ab114f58d746eaab
 추후에 더 내용 추가할 것. 
 
 
-hajun
+bhs
