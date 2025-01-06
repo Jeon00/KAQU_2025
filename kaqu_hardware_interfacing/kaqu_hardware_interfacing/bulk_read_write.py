@@ -1,22 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#
-# bulk_read_write.py
-#
-#  Created on: 2016. 6. 16.
-#      Author: Ryu Woon Jung (Leon)
-#
-
-#
-# *********     Bulk Read and Bulk Write Example      *********
-#
-#
-# Available Dynamixel model on this example : All models using Protocol 2.0
-# This example is designed for using two Dynamixel PRO 54-200, and an USB2DYNAMIXEL.
-# To use another Dynamixel model, such as X series, see their details in E-Manual(support.robotis.com) and edit below variables yourself.
-# Be sure that Dynamixel PRO properties are already set as %% ID : 1 and 2 / Baudnum : 3 (Baudrate : 1000000 [1M])
-#
+# bulk_read_write
 
 import os, sys, ctypes
 
@@ -32,9 +17,9 @@ else:
     def getch():
         return sys.stdin.read(1)
 
-os.sys.path.append('../dynamixel_functions_py')             # Path setting
+#os.sys.path.append('./../../DynamixelSDK/python/src/dynamixel_sdk/dynamixel_functions_py')             # Path setting
+from dynamixel_sdk import *  #다이나믹셀 라이브러리 사용
 
-import dynamixel_functions as dynamixel                     # Uses DYNAMIXEL SDK library
 
 # Control table address
 ADDR_PRO_TORQUE_ENABLE      = 562                           # Control table address is different in Dynamixel model
@@ -71,10 +56,10 @@ COMM_TX_FAIL                = -1001                         # Communication Tx F
 # Initialize PortHandler Structs
 # Set the port path
 # Get methods and members of PortHandlerLinux or PortHandlerWindows
-port_num = dynamixel.portHandler(DEVICENAME)
 
+portHandler = PortHandler(DEVICENAME)
 # Initialize PacketHandler Structs
-dynamixel.packetHandler()
+packHandler = PacketHandler(PROTOCOL_VERSION)
 
 # Initialize groupBulkWrite Struct
 groupwrite_num = dynamixel.groupBulkWrite(port_num, PROTOCOL_VERSION)
