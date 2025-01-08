@@ -18,13 +18,14 @@
 
 # 실제로 어떻게 하느냐? 두 가지 경우로 나눠보면, 1. Practice에서 작업하는 경우, 2. 본인 브랜치를 만들어 작업하시는 경우
 # 1. Practice에서 작업하는 경우 
+# 0) 원격의 Practice를 pull
 # 1) 로컬의 Practice 브랜치에서 시작 
 # 2) 원격 저장소의 Practice 브랜치를 pull(merge) 
 # 3) 작업하기
-# 4) 커밋 후 Practice 브랜치에 푸쉬
+# 4) 커밋 후 Practice 브랜치에 푸쉬(git push origin Practice)
 
 # 2. 본인 브랜치를 만들어 작업하시는 경우  
-# 0) Practice 브랜치에서 갈라지는 본인 이름 브랜치 생성
+# 0) Practice 브랜치를 pull, 여기서 갈라지는 본인 이름 브랜치 생성
 # 1) 로컬의 [본인 이름] 브랜치에서 시작 
 # 2) 원격 저장소의 Practice 브랜치를 pull(merge) : 본인 이름 브랜치는 아무도 업데이트하지 않으므로
 # 3) 작업하기 
