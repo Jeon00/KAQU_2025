@@ -69,28 +69,6 @@ if MY_DXL == 'X_SERIES' or MY_DXL == 'MX_SERIES':
     DXL_MINIMUM_POSITION_VALUE  = 0         # Refer to the Minimum Position Limit of product eManual
     DXL_MAXIMUM_POSITION_VALUE  = 4095      # Refer to the Maximum Position Limit of product eManual
     BAUDRATE                    = 57600
-elif MY_DXL == 'PRO_SERIES':
-    ADDR_TORQUE_ENABLE          = 562       # Control table address is different in DYNAMIXEL model
-    ADDR_LED_RED                = 563       # R.G.B Address: 563 (red), 564 (green), 565 (blue)
-    LEN_LED_RED                 = 1         # Data Byte Length
-    ADDR_GOAL_POSITION          = 596
-    LEN_GOAL_POSITION           = 4
-    ADDR_PRESENT_POSITION       = 611
-    LEN_PRESENT_POSITION        = 4
-    DXL_MINIMUM_POSITION_VALUE  = -150000   # Refer to the Minimum Position Limit of product eManual
-    DXL_MAXIMUM_POSITION_VALUE  = 150000    # Refer to the Maximum Position Limit of product eManual
-    BAUDRATE                    = 57600
-elif MY_DXL == 'P_SERIES' or MY_DXL == 'PRO_A_SERIES':
-    ADDR_TORQUE_ENABLE          = 512       # Control table address is different in DYNAMIXEL model
-    ADDR_LED_RED                = 513       # R.G.B Address: 513 (red), 544 (green), 515 (blue)
-    LEN_LED_RED                 = 1         # Data Byte Length
-    ADDR_GOAL_POSITION          = 564
-    LEN_GOAL_POSITION           = 4         # Data Byte Length
-    ADDR_PRESENT_POSITION       = 580
-    LEN_PRESENT_POSITION        = 4         # Data Byte Length
-    DXL_MINIMUM_POSITION_VALUE  = -150000   # Refer to the Minimum Position Limit of product eManual
-    DXL_MAXIMUM_POSITION_VALUE  = 150000    # Refer to the Maximum Position Limit of product eManual
-    BAUDRATE                    = 57600
 
 # DYNAMIXEL Protocol Version (1.0 / 2.0)
 # https://emanual.robotis.com/docs/en/dxl/protocol2/
@@ -115,24 +93,16 @@ DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')        # Check whic
                                                             # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0"
 
 # 아래 내용은 protocol 1에만 있음
-# TORQUE_ENABLE               = 1                             # Value for enabling the torque
-# TORQUE_DISABLE              = 0                             # Value for disabling the torque
-# DXL_MINIMUM_POSITION_VALUE  = -150000                       # Dynamixel will rotate between this value
-# DXL_MAXIMUM_POSITION_VALUE  = 150000                        # and this value (note that the Dynamixel would not move when the position value is out of movable range. Check e-manual about the range of the Dynamixel you use.)
-# DXL_MOVING_STATUS_THRESHOLD = 20                            # Dynamixel moving status threshold
-
 # ESC_ASCII_VALUE             = 0x1b
-
 # COMM_SUCCESS                = 0                             # Communication Success result value
 # COMM_TX_FAIL                = -1001                         # Communication Tx Failed
-
 # dxl_comm_result = COMM_TX_FAIL                              # Communication result
 # dxl_addparam_result = 0                                     # AddParam result
 # dxl_getdata_result = 0                                      # GetParam result
-
 # dxl_error = 0                                               # Dynamixel error
 # dxl1_present_position = 0                                   # Present position
 # dxl2_led_value_read = 0                                     # Dynamixel moving status
+
 
 # Use the actual port assigned to the U2D2.
 # ex) Windows: "COM*", Linux: "/dev/ttyUSB*", Mac: "/dev/tty.usbserial-*"
@@ -215,6 +185,9 @@ if dxl_addparam_result != 1:
     print("[ID:%03d] groupBulkRead addparam failed" % (DXL2_ID))
     quit()
 
+# 여기까지 초기 세팅
+# 아래의 while문 내부 내용을 msg 콜백으로 묶어서 써도 될듯
+# 하드웨어, 변환 담당 조는 ROS조가 노드를 완성하기 전까지 callback 함수 형태로 만들어 두기
 
 while 1:
     print("Press any key to continue! (or press ESC to quit!)")
