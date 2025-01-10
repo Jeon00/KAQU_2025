@@ -104,18 +104,18 @@ if MY_DXL == 'X_SERIES' or MY_DXL == 'MX_SERIES':
 PROTOCOL_VERSION            = 2.0
 
 # Default setting
-FR1_ID                     = 1                             # Dynamixel ID: 1
-FR2_ID                     = 2                             # Dynamixel ID: 2
-FR3_ID                     = 3
-FL1_ID                     = 4
-FL2_ID                     = 5
-FL3_ID                     = 6
-RR1_ID                     = 7
-RR2_ID                     = 8
-RR3_ID                     = 9
-RL1_ID                     = 10
-RL2_ID                     = 11
-FL3_ID                     = 12
+FR1_ID                     = 11                             # Dynamixel ID: 1
+FR2_ID                     = 12                             # Dynamixel ID: 2
+FR3_ID                     = 13
+FL1_ID                     = 21
+FL2_ID                     = 22
+FL3_ID                     = 23
+RR1_ID                     = 31
+RR2_ID                     = 32
+RR3_ID                     = 33
+RL1_ID                     = 41
+RL2_ID                     = 42
+RL3_ID                     = 43
 
 BAUDRATE                    = 1000000
 DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')        # Check which port is being used on your controller
@@ -144,6 +144,7 @@ DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status thresh
 index = 0
 dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]        # Goal position
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
+dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
 
 # Initialize PortHandler instance
 # Set the port path
@@ -160,7 +161,6 @@ groupBulkWrite = GroupBulkWrite(portHandler, packetHandler)
 
 # Initialize GroupBulkRead instace for Present Position
 groupBulkRead = GroupBulkRead(portHandler, packetHandler)
-
 
 # Open port
 if portHandler.openPort():
@@ -180,27 +180,18 @@ else:
     getch()
     quit()
 
+# 각 모터 토크 켜기
+for i in dxl_id:
+    dxl_comm_result, dxl_error= packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    else:
+        print("Dynamixel#%d has been successfully connected" % i)
 
-# Enable Dynamixel#1 Torque
-# dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-# if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-#     dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
-# elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
-#     dynamixel.printRxPacketError(PROTOCOL_VERSION, dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION))
-# else:
-#     print("Dynamixel#1 has been successfully connected")
-dxl_comm_result, dxl_error= ph.write1ByteTxRx(portHandler, FR1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-if dxl_comm_result != COMM_SUCCESS:
-    print("%s" % ph.getTxRxResult(dxl_comm_result))
-
-# Enable Dynamixel#2 Torque
-dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL2_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-    dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
-elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
-    dynamixel.printRxPacketError(PROTOCOL_VERSION, dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION))
-else:
-    print("Dynamixel#2 has been successfully connected")
+dxl_addparam_result = groupBulkRead.addParam()
+# 여기까지 했습니다
 
 # Add parameter storage for Dynamixel#1 present position value
 dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)).value
@@ -279,6 +270,16 @@ while 1:
         index = 0
 
 
+# ROS2 맡으신 분들은 여기에 노드 작성해주시면 됩니다. 
+
+
+# 노드 콜백함수 정의
+# ROS2 맡으신 분들은 일단 비워두시고, 하드웨어 통신+변환 맡으신 분들은 일반적인 함수 형태로 작성해주시면 됩니다. 
+
+# 
+
+
+
 # Disable Dynamixel#1 Torque
 dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
 if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
@@ -295,3 +296,6 @@ elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
 
 # Close port
 dynamixel.closePort(port_num)
+
+
+# 여기다가 노드 작성해주세요
