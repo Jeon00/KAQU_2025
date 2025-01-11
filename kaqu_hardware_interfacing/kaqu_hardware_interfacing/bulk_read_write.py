@@ -64,6 +64,15 @@
 # - 센서의 실제 위치를 고려, 바디 좌표계로 변환된 센서값(B)만들기
 
 import os
+import rclpy
+from rclpy.node import Node
+
+
+
+
+
+
+
 
 if os.name == 'nt':
     import msvcrt
@@ -295,3 +304,11 @@ elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
 
 # Close port
 dynamixel.closePort(port_num)
+
+
+class Bulk_Read_Write(Node):
+
+    def __init__(self):
+        super().__init__(Bulk_Read_Write)
+
+    def callback(self):
