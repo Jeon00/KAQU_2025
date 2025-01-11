@@ -67,8 +67,7 @@ import os
 import rclpy
 from rclpy.node import Node
 
-
-
+from std_msgs.msg import DynamixelData
 
 
 
@@ -280,9 +279,19 @@ while 1:
 
 
 # ROS2 맡으신 분들은 여기에 노드 작성해주시면 됩니다. 
+class Bulk_Read_Write(Node):
 
+    def __init__(self):
+        super().__init__('bulk_read_write')
+        self.publisher = self.create_publisher(DataPublisher, Topic, Qos)
 
 # 노드 콜백함수 정의
+
+    def publish_callback(self):
+        msg = DataPublisher()
+        self.publisher.publish(msg)
+        
+
 # ROS2 맡으신 분들은 일단 비워두시고, 하드웨어 통신+변환 맡으신 분들은 일반적인 함수 형태로 작성해주시면 됩니다. 
 
 # 
@@ -306,14 +315,5 @@ elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
 # Close port
 dynamixel.closePort(port_num)
 
-
-<<<<<<< HEAD
-class Bulk_Read_Write(Node):
-
-    def __init__(self):
-        super().__init__(Bulk_Read_Write)
-
-    def callback(self):
 =======
 # 여기다가 노드 작성해주세요
->>>>>>> 4463f8d3c79ccccf54e6f13d5fb4dbb0e230bbd6
