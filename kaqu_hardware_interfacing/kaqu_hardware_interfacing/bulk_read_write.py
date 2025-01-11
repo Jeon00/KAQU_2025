@@ -67,11 +67,7 @@ import os
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import DynamixelData
-
-
-
-
+from std_msgs.msg import DataPublisher
 
 if os.name == 'nt':
     import msvcrt
