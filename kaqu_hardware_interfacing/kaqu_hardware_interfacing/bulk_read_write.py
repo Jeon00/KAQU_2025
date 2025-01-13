@@ -142,7 +142,7 @@ TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
 
 index = 0
-dxl_goal_position = [DXL_MINIMUM_POSITION_VALUE, DXL_MAXIMUM_POSITION_VALUE]        # Goal position
+dxl_goal_position = [0]*12        # 다이나믹셀 각도로 변환된 Goal position 넣을 곳
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
 dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
 
@@ -190,24 +190,27 @@ for i in dxl_id:
     else:
         print("Dynamixel#%d has been successfully connected" % i)
 
-dxl_addparam_result = groupBulkRead.addParam()
-# 여기까지 했습니다
-
-# Add parameter storage for Dynamixel#1 present position value
-dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)).value
-if dxl_addparam_result != 1:
-    print("[ID:%03d] groupBulkRead addparam failed" % (DXL1_ID))
-    quit()
-
-# Add parameter storage for Dynamixel#2 present moving value
-dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkReadAddParam(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)).value
-if dxl_addparam_result != 1:
-    print("[ID:%03d] groupBulkRead addparam failed" % (DXL2_ID))
-    quit()
+# present position에 대한 parameter 저장소 추가
+for i in dxl_id:
+    dxl_addparam_result = groupBulkRead.addParam(i, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+    if dxl_addparam_result != True:
+        print("[ID:%03d] groupBulkRead addparam failed" % i)
+        quit()
 
 # 여기까지 초기 세팅
 # 아래의 while문 내부 내용을 msg 콜백으로 묶어서 써도 될듯
 # 하드웨어, 변환 담당 조는 ROS조가 노드를 완성하기 전까지 callback 함수 형태로 만들어 두기
+
+while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯. 
+    print("Press any key to continue! (or press ESC to quit!)")
+    if getch() == chr(0x1b):
+        break
+
+    for i in range len(dxl_goal_position):
+        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i]))]
+
+
+
 
 while 1:
     print("Press any key to continue! (or press ESC to quit!)")
