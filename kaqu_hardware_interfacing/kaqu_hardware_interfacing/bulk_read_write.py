@@ -64,6 +64,8 @@
 # - 센서의 실제 위치를 고려, 바디 좌표계로 변환된 센서값(B)만들기
 
 import os
+import numpy as np
+from math import sqrt, atan2, sin, cos, pi
 
 if os.name == 'nt':
     import msvcrt
@@ -275,11 +277,9 @@ while 1:
 
 # ROS2 맡으신 분들은 여기에 노드 작성해주시면 됩니다. 
 
-
 # 노드 콜백함수 정의
 # ROS2 맡으신 분들은 일단 비워두시고, 하드웨어 통신+변환 맡으신 분들은 일반적인 함수 형태로 작성해주시면 됩니다. 
 
-# 
 
 
 
@@ -302,3 +302,41 @@ dynamixel.closePort(port_num)
 
 
 # 여기다가 노드 작성해주세요
+
+
+
+# Transform
+# 아직 보내는 쪽의 msg 형식이 정해지지 않아 임의로 callback만 작성함. 
+def kaqu_transform(msg):
+    # 라디안 -> 라디안
+    for i in range(4):
+        alpha = msg.joint_angle[3*i +1]
+        beta1 = msg.joint_angle[3*i+ 2]
+
+        # 이 부분을 받아올지 코드에 박아둘지는 고민 필요
+        l1 = 130
+        l2 = 36
+        l3 = 130
+        l4a = 36
+        lhip = 31.5
+        
+        _a = l1*cos(alpha)+l4a*cos(beta1)
+        _b = l1*sin(alpha)+l4a*sin(beta1)-lhip
+        _c = (_a**2+_b**2+l2**2-l3**2)/(2*l2)
+
+        beta2 = atan2((_b+sqrt(_b**2-(_a+_c)**2))/(_a+_c))
+        
+        if is_right_angle(beta2):
+            pass
+        else:
+            beta2 = atan2((_b-sqrt(_b**2-(_a+_c)**2))/(_a+_c))
+        
+        new_angles = [0]*12
+        
+
+    # 라디안 -> 모터값
+
+# 구한 각도가 말이 되는가?
+def is_right_angle(beta):
+
+    return True
