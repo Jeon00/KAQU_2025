@@ -206,7 +206,7 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
     if getch() == chr(0x1b):
         break
 
-    for i in range len(dxl_goal_position):
+    for i in range dxl_id :
         param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i]))]
 
 
