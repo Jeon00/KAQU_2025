@@ -209,9 +209,6 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
     for i in range len(dxl_goal_position):
         param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i]))]
 
-
-
-
 while 1:
     print("Press any key to continue! (or press ESC to quit!)")
     if getch() == chr(ESC_ASCII_VALUE):
@@ -273,16 +270,6 @@ while 1:
         index = 0
 
 
-# ROS2 맡으신 분들은 여기에 노드 작성해주시면 됩니다. 
-
-
-# 노드 콜백함수 정의
-# ROS2 맡으신 분들은 일단 비워두시고, 하드웨어 통신+변환 맡으신 분들은 일반적인 함수 형태로 작성해주시면 됩니다. 
-
-# 
-
-
-
 # Disable Dynamixel#1 Torque
 dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
 if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
@@ -301,4 +288,88 @@ elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
 dynamixel.closePort(port_num)
 
 
-# 여기다가 노드 작성해주세요
+
+# Bulk_Read_Write 노드
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float64  # team4 QuadrupedControllerNode 노드 참조
+from sensor_msgs.msg import Imu 
+
+class Bulk_Read_Write(Node):
+    def __init__(self):
+        super().__init__('bulk_read_write')
+
+        # 다리 각도 제어값(A1)
+        self.control_subscriber = self.create_subscription(
+            Float64, 'control_leg_angle', self.control_callback, 10)
+        
+        # 다리 각도 실제값 (A2), 센서값 (B)
+        self.real_angle_publisher = self.create_publisher(
+            Float64, 'real_leg_angle', 10)
+        self.sensor_data_publisher = self.create_publisher(
+            Imu, 'sensor_data', 10)
+
+        self.create_timer(0.1, self.publish_data)
+
+
+    # 다리 각도 제어값(A1) -> goal position
+    def control_callback(self, msg):
+        control_angle = msg.data
+        self.set_goal_positions(control_angle)
+
+    def set_goal_positions(self, angle):
+        for i, motor_id in enumerate(self.dxl_id):
+            self.dxl_goal_position[i] = int((angle / 360.0) * (DXL_MAXIMUM_POSITION_VALUE - DXL_MINIMUM_POSITION_VALUE))
+            param_goal_position = [
+                DXL_LOBYTE(DXL_LOWORD(self.dxl_goal_position[i])),
+                DXL_HIBYTE(DXL_LOWORD(self.dxl_goal_position[i])),
+                DXL_LOBYTE(DXL_HIWORD(self.dxl_goal_position[i])),
+                DXL_HIBYTE(DXL_HIWORD(self.dxl_goal_position[i]))
+            ]
+            self.groupBulkWrite.addParam(motor_id, ADDR_GOAL_POSITION, param_goal_position)
+        self.groupBulkWrite.txPacket()
+        self.groupBulkWrite.clearParam()
+
+
+    # 다리 각도 실제값 (A2), 센서값 (B) 발행
+    def publish_data(self):
+        # 모터 현재 위치 읽기
+        self.groupBulkRead.txRxPacket()
+        total_position = 0
+        valid_count = 0
+
+        for motor_id in self.dxl_id:
+            if self.groupBulkRead.isAvailable(motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION):
+                present_position = self.groupBulkRead.getData(motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+                total_position += present_position
+                valid_count += 1
+                self.get_logger().info(f"Motor {motor_id} position: {present_position}")
+        
+        # A2, B 발행 (여기 다시 수정해야함) ---------
+        if valid_count > 0: # 정상적으로 모터를 읽어온 경우
+            average_position = total_position / valid_count
+            angle_msg = Float64()
+            angle_msg.data = (average_position / DXL_MAXIMUM_POSITION_VALUE) * 360.0
+            self.real_angle_publisher.publish(angle_msg)
+
+        sensor_msg = Imu()
+        self.sensor_data_publisher.publish(sensor_msg)
+        # ------------------------------------------
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Bulk_Read_Write()
+
+    try:
+        node.spin_node()
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        node.get_logger().info("Shutting down Bulk_Read_Write Node...")
+    finally:
+        node.portHandler.closePort()
+        rclpy.shutdown()
+    
+    if __name__ == '__main__':
+        main()
+
