@@ -202,19 +202,23 @@ for i in dxl_id:
 # 아래의 while문 내부 내용을 msg 콜백으로 묶어서 써도 될듯
 # 하드웨어, 변환 담당 조는 ROS조가 노드를 완성하기 전까지 callback 함수 형태로 만들어 두기
 
-while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯. 
-    print("Press any key to continue! (or press ESC to quit!)")
-    if getch() == chr(0x1b):
-        break
-
+# 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯.
+# while 1:
+def callback_bulkReadWrite(msg):
+    # print("Press any key to continue! (or press ESC to quit!)")
+    # if getch() == chr(0x1b):
+    #     break
     for i in range(len(dxl_goal_position)):
+        #메시지에서 Goal Position 받아옴
+        dxl_goal_position[i] = msg.goal_position[i]
         #Goal Position 값을 byte단위의 배열로 쪼갬
         param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[i]))]
         #Goal position을 BulkWrite parameter 저장소에 추가
         dxl_addparam_result = groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
         if dxl_addparam_result != True:
             print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
-            quit()
+            #quit()
+            return
     
     # Bulkwrite Goal Position
     dxl_comm_result = groupBulkWrite.txPacket()
@@ -235,7 +239,8 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
             dxl_getdata_result = groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
             if dxl_getdata_result != True:
                 print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
-                quit()
+                #quit()
+                return
 
             # Present Position값 가져오기
             dxl_present_position[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
@@ -265,7 +270,6 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
 # 노드 콜백함수 정의
 # ROS2 맡으신 분들은 일단 비워두시고, 하드웨어 통신+변환 맡으신 분들은 일반적인 함수 형태로 작성해주시면 됩니다. 
 
-# 
 
 # Clear bulkread parameter storage
 groupBulkRead.clearParam()
