@@ -141,6 +141,7 @@ TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
 
 index = 0
+flag = 0                          # Threshold 반복문용 변수
 dxl_goal_position = [0]*12        # 다이나믹셀 각도로 변환된 Goal position 넣을 곳
 dxl_present_position = [0]*12     # 모터에서 Present Position 값 받아올 곳
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
@@ -241,9 +242,15 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
             
             # Present Position 출력
             print("[ID:%03d] Present Position : %d" % (dxl_id[i], dxl_present_position[i]))
-
-#         if not (abs(dxl_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
-#             break
+        
+        # 현재 모터값과 목표 모터값의 차이가 Threshold보다 크면(모든 모터가 목표 모터값에 도달하면) 반복문을 빠져나감
+        flag = 0
+        for i in range(len(dxl_present_position)) :
+            if abs(dxl_goal_position[i] - dxl_present_position[i]) > DXL_MOVING_STATUS_THRESHOLD:
+                flag == 1
+                break
+        if flag == 0 :
+            break
 
 #     # Change goal position
 #     if index == 0:
