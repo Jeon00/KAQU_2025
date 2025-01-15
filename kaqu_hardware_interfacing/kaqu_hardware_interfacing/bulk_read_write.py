@@ -207,11 +207,11 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
 
     for i in range(len(dxl_goal_position)):
         #Goal Position 값을 byte단위의 배열로 쪼갬
-        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[index])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[index])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[index])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[index]))]
+        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[i]))]
         #Goal position을 BulkWrite parameter 저장소에 추가
-        dxl_addparam_result = groupBulkWrite.addParam*(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
+        dxl_addparam_result = groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
         if dxl_addparam_result != True:
-            print("[ID:%03d] groupBulkWrite addparam failed" % DXL1_ID)
+            print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
             quit()
     
     # Bulkwrite goal position and LED value
