@@ -235,8 +235,10 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
             if dxl_getdata_result != True:
                 print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
                 quit()
+
             # Present Position값 가져오기
             dxl_present_position[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+            
             # Present Position 출력
             print("[ID:%03d] Present Position : %d" % (dxl_id[i], dxl_present_position[i]))
 
