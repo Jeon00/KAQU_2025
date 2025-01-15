@@ -205,71 +205,83 @@ while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될�
     if getch() == chr(0x1b):
         break
 
-    for i in range len(dxl_goal_position):
-        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i]))]
-
-
-
-
-while 1:
-    print("Press any key to continue! (or press ESC to quit!)")
-    if getch() == chr(ESC_ASCII_VALUE):
-        break
-
-    # Add parameter storage for Dynamixel#1 goal position
-    dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkWriteAddParam(groupwrite_num, DXL1_ID, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, dxl_goal_position[index], LEN_PRO_GOAL_POSITION)).value
-    if dxl_addparam_result != 1:
-        fprintf(stderr, "[ID:%03d] groupBulkWrite addparam failed", DXL1_ID)
-        quit()
-
-    # Add parameter storage for Dynamixel#2 LED value
-    dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkWriteAddParam(groupwrite_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED, dxl_led_value[index], LEN_PRO_LED_RED)).value
-    if dxl_addparam_result != 1:
-        fprintf(stderr, "[ID:%03d] groupBulkWrite addparam failed", DXL2_ID)
-        quit()
-
+    for i in range(len(dxl_goal_position)):
+        #Goal Position 값을 byte단위의 배열로 쪼갬
+        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[index])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[index])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[index])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[index]))]
+        #Goal position을 BulkWrite parameter 저장소에 추가
+        dxl_addparam_result = groupBulkWrite.addParam*(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
+        if dxl_addparam_result != True:
+            print("[ID:%03d] groupBulkWrite addparam failed" % DXL1_ID)
+            quit()
+    
     # Bulkwrite goal position and LED value
-    dynamixel.groupBulkWriteTxPacket(groupwrite_num)
-    if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-        dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
+    dxl_comm_result = groupBulkWrite.txPacket()
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
 
     # Clear bulkwrite parameter storage
-    dynamixel.groupBulkWriteClearParam(groupwrite_num)
+    groupBulkWrite.clearParam()
 
-    while 1:
-        # Bulkread present position and moving status
-        dynamixel.groupBulkReadTxRxPacket(groupread_num)
-        if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-            dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
 
-        # Check if groupbulkread data of Dynamixel#1 is available
-        dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)).value
-        if dxl_getdata_result != 1:
-            print("[ID:%03d] groupBulkRead getdata failed" % (DXL1_ID))
-            quit()
+# while 1:
+#     print("Press any key to continue! (or press ESC to quit!)")
+#     if getch() == chr(ESC_ASCII_VALUE):
+#         break
 
-        # Check if groupbulkread data of Dynamixel#2 is available
-        dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)).value
-        if dxl_getdata_result != 1:
-            print("[ID:%03d] groupBulkRead getdata failed" % (DXL2_ID))
-            quit()
+#     # Add parameter storage for Dynamixel#1 goal position
+#     dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkWriteAddParam(groupwrite_num, DXL1_ID, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, dxl_goal_position[index], LEN_PRO_GOAL_POSITION)).value
+#     if dxl_addparam_result != 1:
+#         fprintf(stderr, "[ID:%03d] groupBulkWrite addparam failed", DXL1_ID)
+#         quit()
 
-        # Get Dynamixel#1 present position value
-        dxl1_present_position = dynamixel.groupBulkReadGetData(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
+#     # Add parameter storage for Dynamixel#2 LED value
+#     dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkWriteAddParam(groupwrite_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED, dxl_led_value[index], LEN_PRO_LED_RED)).value
+#     if dxl_addparam_result != 1:
+#         fprintf(stderr, "[ID:%03d] groupBulkWrite addparam failed", DXL2_ID)
+#         quit()
 
-        # Get Dynamixel#2 moving status value
-        dxl2_led_value_read = dynamixel.groupBulkReadGetData(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)
+#     # Bulkwrite goal position and LED value
+#     dynamixel.groupBulkWriteTxPacket(groupwrite_num)
+#     if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
+#         dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
 
-        print("[ID:%03d] Present Position : %d \t [ID:%03d] LED Value: %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_led_value_read))
+#     # Clear bulkwrite parameter storage
+#     dynamixel.groupBulkWriteClearParam(groupwrite_num)
 
-        if not (abs(dxl_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
-            break
+#     while 1:
+#         # Bulkread present position and moving status
+#         dynamixel.groupBulkReadTxRxPacket(groupread_num)
+#         if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
+#             dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
 
-    # Change goal position
-    if index == 0:
-        index = 1
-    else:
-        index = 0
+#         # Check if groupbulkread data of Dynamixel#1 is available
+#         dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)).value
+#         if dxl_getdata_result != 1:
+#             print("[ID:%03d] groupBulkRead getdata failed" % (DXL1_ID))
+#             quit()
+
+#         # Check if groupbulkread data of Dynamixel#2 is available
+#         dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)).value
+#         if dxl_getdata_result != 1:
+#             print("[ID:%03d] groupBulkRead getdata failed" % (DXL2_ID))
+#             quit()
+
+#         # Get Dynamixel#1 present position value
+#         dxl1_present_position = dynamixel.groupBulkReadGetData(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
+
+#         # Get Dynamixel#2 moving status value
+#         dxl2_led_value_read = dynamixel.groupBulkReadGetData(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)
+
+#         print("[ID:%03d] Present Position : %d \t [ID:%03d] LED Value: %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_led_value_read))
+
+#         if not (abs(dxl_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
+#             break
+
+#     # Change goal position
+#     if index == 0:
+#         index = 1
+#     else:
+#         index = 0
 
 
 # ROS2 맡으신 분들은 여기에 노드 작성해주시면 됩니다. 
