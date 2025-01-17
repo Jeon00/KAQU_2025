@@ -299,6 +299,11 @@ class Bulk_Read_Write(Node):
     def __init__(self):
         super().__init__('bulk_read_write')
 
+        self.dxl_goal_position = dxl_goal_position
+        self.dxl_id = dxl_id
+        self.groupBulkWrite = groupBulkWrite
+        self.groupBulkRead = groupBulkRead
+
         # 다리 각도 제어값(A1)
         self.control_subscriber = self.create_subscription(
             Float64, 'control_leg_angle', self.control_callback, 10)
@@ -355,6 +360,7 @@ class Bulk_Read_Write(Node):
         sensor_msg = Imu()
         self.sensor_data_publisher.publish(sensor_msg)
         # ------------------------------------------
+    
 
 
 def main(args=None):
