@@ -204,7 +204,9 @@ for i in dxl_id:
 
 # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯.
 # while 1:
-def callback_bulkReadWrite(msg):
+def timer_callback(self): # (25.01.17) callback_bulkReadWrite -> timer_callback으로 수정 // msg->self로 수정함
+                          # timer_period 1/50-1/80 sec로 생각 중
+
     # print("Press any key to continue! (or press ESC to quit!)")
     # if getch() == chr(0x1b):
     #     break
@@ -228,34 +230,34 @@ def callback_bulkReadWrite(msg):
     # Clear bulkwrite parameter storage
     groupBulkWrite.clearParam()
 
-    while 1:
-        # Present Position값 Bulkread
-        dxl_comm_result = groupBulkRead.txRxPacket()
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    #while 1: (25.01.17) timer_callback함수 안에 들어갈 내용이라 while문을 제거함
+    # Present Position값 Bulkread
+    dxl_comm_result = groupBulkRead.txRxPacket()
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
 
-        for i in range(len(dxl_id)):
-            # Bulkread한 데이터가 사용 가능한지 확인
-            dxl_getdata_result = groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-            if dxl_getdata_result != True:
-                print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
-                #quit()
-                return
+    for i in range(len(dxl_id)):
+        # Bulkread한 데이터가 사용 가능한지 확인
+        dxl_getdata_result = groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+        if dxl_getdata_result != True:
+            print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
+            #quit()
+            return
 
-            # Present Position값 가져오기
-            dxl_present_position[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+        # Present Position값 가져오기
+        dxl_present_position[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
             
-            # Present Position 출력
-            print("[ID:%03d] Present Position : %d" % (dxl_id[i], dxl_present_position[i]))
+        # Present Position 출력
+        print("[ID:%03d] Present Position : %d" % (dxl_id[i], dxl_present_position[i]))
         
-        # 현재 모터값과 목표 모터값의 차이가 Threshold보다 크면(모든 모터가 목표 모터값에 도달하면) 반복문을 빠져나감
-        flag = 0
-        for i in range(len(dxl_present_position)) :
-            if abs(dxl_goal_position[i] - dxl_present_position[i]) > DXL_MOVING_STATUS_THRESHOLD:
-                flag == 1
-                break
-        if flag == 0 :
+    # 현재 모터값과 목표 모터값의 차이가 Threshold보다 크면(모든 모터가 목표 모터값에 도달하면) 반복문을 빠져나감
+    flag = 0
+    for i in range(len(dxl_present_position)) :
+        if abs(dxl_goal_position[i] - dxl_present_position[i]) > DXL_MOVING_STATUS_THRESHOLD:
+            flag == 1
             break
+    if flag == 0 :
+        break
 
 #     # Change goal position
 #     if index == 0:
