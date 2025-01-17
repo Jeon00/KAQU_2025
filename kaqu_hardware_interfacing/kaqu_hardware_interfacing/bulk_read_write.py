@@ -210,22 +210,25 @@ def timer_callback(self): # (25.01.17) callback_bulkReadWrite -> timer_callback�
     # print("Press any key to continue! (or press ESC to quit!)")
     # if getch() == chr(0x1b):
     #     break
-    for i in range(len(dxl_goal_position)):
-        #메시지에서 Goal Position 받아옴
-        dxl_goal_position[i] = msg.goal_position[i]
-        #Goal Position 값을 byte단위의 배열로 쪼갬
-        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[i]))]
-        #Goal position을 BulkWrite parameter 저장소에 추가
-        dxl_addparam_result = groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
-        if dxl_addparam_result != True:
-            print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
-            #quit()
-            return
+
+    # 214 ~ 230 일단 주석 처리
+    # for i in range(len(dxl_goal_position)):
+    #     #메시지에서 Goal Position 받아옴
+    #     dxl_goal_position[i] = msg.goal_position[i]
+    #     #Goal Position 값을 byte단위의 배열로 쪼갬
+    #     param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[i]))]
+    #     #Goal position을 BulkWrite parameter 저장소에 추가
+    #     dxl_addparam_result = groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
+    #     if dxl_addparam_result != True:
+    #         print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
+    #         #quit()
+    #         return
     
-    # Bulkwrite Goal Position
-    dxl_comm_result = groupBulkWrite.txPacket()
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    #     # Bulkwrite Goal Position
+    #     dxl_comm_result = groupBulkWrite.txPacket()
+    #     if dxl_comm_result != COMM_SUCCESS:
+    #         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+
 
     # Clear bulkwrite parameter storage
     groupBulkWrite.clearParam()
