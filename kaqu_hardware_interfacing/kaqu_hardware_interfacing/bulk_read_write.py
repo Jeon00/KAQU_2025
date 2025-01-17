@@ -205,7 +205,7 @@ for i in dxl_id:
 # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯.
 # while 1:
 def timer_callback(self): # (25.01.17) callback_bulkReadWrite -> timer_callback으로 수정 // msg->self로 수정함
-                          # timer_period 1/50-1/80 sec로 생각 중
+                          # timer_period 1/50-1/80 sec로 생각 중 -> 소프2팀이슈 HRI 아래 링크 참고
 
     # print("Press any key to continue! (or press ESC to quit!)")
     # if getch() == chr(0x1b):
