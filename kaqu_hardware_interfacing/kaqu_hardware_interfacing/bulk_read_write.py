@@ -67,7 +67,9 @@ import os
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import DataPublisher
+from std_msgs.msg import Float64
+from sensor_msgs.msg import Imu
+
 
 if os.name == 'nt':
     import msvcrt
@@ -273,19 +275,100 @@ while 1:
     else:
         index = 0
 
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float64
+from sensor_msgs.msg import Imu
+
 
 # ROS2 맡으신 분들은 여기에 노드 작성해주시면 됩니다. 
 class Bulk_Read_Write(Node):
 
     def __init__(self):
         super().__init__('bulk_read_write')
-        self.publisher = self.create_publisher(DataPublisher, Topic, Qos)
+        
+        #class내 속성(초기값 설정 필요)
+        self.dxl_goal_position = dxl_goal_position
+        self.dxl_id = dxl_id
+        self.groupBulkWrite = groupBulkWrite
+        self.groupBulkRead = groupBulkRead
+        
+        self.total_position = [] # 최종 위치 값 초기화
+        
+        self.position_value = DXL_MAXIMUM_POSITION_VALUE - DXL_MINIMUM_POSITION_VALUE 
 
-# 노드 콜백함수 정의
+        # 객체 생성
+        self.control_subscriber = self.create_subscription(Float64,'control_leg_angle',self.control_callback,10) #A1 무릎 모터 기준의 다리 각도 제어값 받기
 
-    def publish_callback(self):
-        msg = DataPublisher()
-        self.publisher.publish(msg)
+        self.real_publisher = self.create_publisher(Float64,'real_leg_angle',10)  #A2 무릎 모터 기준의 다리 각도 실제값
+        self.sensor_publisher = self.create_publisher(Imu,'sensor_data' , 10)    #B 바디 좌표계로 변환된 센서값
+
+        # 원하는 HZ로 publish_data 함수 실행
+        hertz = 10
+        self.timer = self.create_timer(1/hertz, self.publish_data)
+        
+
+    # A1의 값을 받아서 목표한 값 수행
+    def control_callback(self,msg):
+        received_angle = msg.data
+
+        for i, motor_id in enumerate(self.dxl_id):
+            self.dxl_goal_position[i] = int((received_angle)/ 360.0)* (self.position_value)
+            param_goal_position = [
+                DXL_LOBYTE(DXL_LOWORD(self.dxl_goal_position[i])),
+                DXL_HIBYTE(DXL_LOWORD(self.dxl_goal_position[i])),
+                DXL_LOBYTE(DXL_HIWORD(self.dxl_goal_position[i])),
+                DXL_HIBYTE(DXL_HIWORD(self.dxl_goal_position[i]))
+            ]
+            self.groupBulkWrite.addParam(motor_id, ADDR_GOAL_POSITION, param_goal_position)
+            self.groupBulkWrite.txPacket()
+            self.groupBulkWrite.clearParam()
+
+        
+    #A2, B 값 발행
+    def publish_data(self):
+        
+        # 현재 위치 읽기
+        self.groupBulkRead.txRxPacket()
+
+        for motor_id in self.dxl_id:
+            if self.groupBulkRead.isAvailable(motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION):
+                present_position = self.groupBulkRead.getData(motor_id,ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+                self.total_position.append(present_position) 
+                
+                self.get_logger().info(f"Motor {motor_id} position: {present_position} ")
+                
+                return self.total_position
+            else:
+                self.get_logger().info(f"Failed to retrieve position for Motor {motor_id}")
+            
+        
+
+        #읽은 값 발행
+        if len(self.total_position) == len(self.dxl_id):
+            
+            #A2 publish
+            angle_msg = Float64()
+            angle_msg.data = (self.totoal_position/self.position_value)*360
+            self.real_publisher.publish(angle_msg)
+
+            #B publish
+            sensor_msg = Imu()
+            sensor_msg.data = () ## 바디 좌표계로 변환하는 코드 팔요
+            self.sensor_publisher.publish(sensor_msg)
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Bulk_Read_Write()
+    rclpy.spin(node)
+    node.portHandler.closePort()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()  
+        
+
+      
         
 
 # ROS2 맡으신 분들은 일단 비워두시고, 하드웨어 통신+변환 맡으신 분들은 일반적인 함수 형태로 작성해주시면 됩니다. 
