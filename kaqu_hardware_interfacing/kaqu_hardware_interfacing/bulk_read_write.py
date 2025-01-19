@@ -272,7 +272,7 @@ class Bulk_Read_Write(Node):
         sensor_msg = Imu()
         self.sensor_data_publisher.publish(sensor_msg)
         # ------------------------------------------
-    
+
 
 
 def main(args=None):
