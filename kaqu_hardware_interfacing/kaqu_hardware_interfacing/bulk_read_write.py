@@ -353,3 +353,13 @@ def main(args=None):
 if __name__ == '__main__':
     main()
 
+# Disable Dynamixel Torque
+for i in dxl_id:
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+# Close port
+portHandler.closePort()
