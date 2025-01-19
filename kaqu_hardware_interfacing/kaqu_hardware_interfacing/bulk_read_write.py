@@ -64,6 +64,14 @@
 # - 센서의 실제 위치를 고려, 바디 좌표계로 변환된 센서값(B)만들기
 
 import os
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float64  # team4 QuadrupedControllerNode 노드 참조
+from sensor_msgs.msg import Imu 
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float64  # team4 QuadrupedControllerNode 노드 참조
+from sensor_msgs.msg import Imu 
 
 if os.name == 'nt':
     import msvcrt
@@ -198,106 +206,12 @@ for i in dxl_id:
         quit()
 
 # 여기까지 초기 세팅
-# 아래의 while문 내부 내용을 msg 콜백으로 묶어서 써도 될듯
-# 하드웨어, 변환 담당 조는 ROS조가 노드를 완성하기 전까지 callback 함수 형태로 만들어 두기
-
-while 1: # 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯. 
-    print("Press any key to continue! (or press ESC to quit!)")
-    if getch() == chr(0x1b):
-        break
-
-    for i in range dxl_id :
-        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i]))]
-
-while 1:
-    print("Press any key to continue! (or press ESC to quit!)")
-    if getch() == chr(ESC_ASCII_VALUE):
-        break
-
-    # Add parameter storage for Dynamixel#1 goal position
-    dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkWriteAddParam(groupwrite_num, DXL1_ID, ADDR_PRO_GOAL_POSITION, LEN_PRO_GOAL_POSITION, dxl_goal_position[index], LEN_PRO_GOAL_POSITION)).value
-    if dxl_addparam_result != 1:
-        fprintf(stderr, "[ID:%03d] groupBulkWrite addparam failed", DXL1_ID)
-        quit()
-
-    # Add parameter storage for Dynamixel#2 LED value
-    dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupBulkWriteAddParam(groupwrite_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED, dxl_led_value[index], LEN_PRO_LED_RED)).value
-    if dxl_addparam_result != 1:
-        fprintf(stderr, "[ID:%03d] groupBulkWrite addparam failed", DXL2_ID)
-        quit()
-
-    # Bulkwrite goal position and LED value
-    dynamixel.groupBulkWriteTxPacket(groupwrite_num)
-    if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-        dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
-
-    # Clear bulkwrite parameter storage
-    dynamixel.groupBulkWriteClearParam(groupwrite_num)
-
-    while 1:
-        # Bulkread present position and moving status
-        dynamixel.groupBulkReadTxRxPacket(groupread_num)
-        if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-            dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
-
-        # Check if groupbulkread data of Dynamixel#1 is available
-        dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)).value
-        if dxl_getdata_result != 1:
-            print("[ID:%03d] groupBulkRead getdata failed" % (DXL1_ID))
-            quit()
-
-        # Check if groupbulkread data of Dynamixel#2 is available
-        dxl_getdata_result = ctypes.c_ubyte(dynamixel.groupBulkReadIsAvailable(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)).value
-        if dxl_getdata_result != 1:
-            print("[ID:%03d] groupBulkRead getdata failed" % (DXL2_ID))
-            quit()
-
-        # Get Dynamixel#1 present position value
-        dxl1_present_position = dynamixel.groupBulkReadGetData(groupread_num, DXL1_ID, ADDR_PRO_PRESENT_POSITION, LEN_PRO_PRESENT_POSITION)
-
-        # Get Dynamixel#2 moving status value
-        dxl2_led_value_read = dynamixel.groupBulkReadGetData(groupread_num, DXL2_ID, ADDR_PRO_LED_RED, LEN_PRO_LED_RED)
-
-        print("[ID:%03d] Present Position : %d \t [ID:%03d] LED Value: %d" % (DXL1_ID, dxl1_present_position, DXL2_ID, dxl2_led_value_read))
-
-        if not (abs(dxl_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
-            break
-
-    # Change goal position
-    if index == 0:
-        index = 1
-    else:
-        index = 0
-
-
-# Disable Dynamixel#1 Torque
-dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL1_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-    dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
-elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
-    dynamixel.printRxPacketError(PROTOCOL_VERSION, dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION))
-
-# Disable Dynamixel#2 Torque
-dynamixel.write1ByteTxRx(port_num, PROTOCOL_VERSION, DXL2_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-if dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION) != COMM_SUCCESS:
-    dynamixel.printTxRxResult(PROTOCOL_VERSION, dynamixel.getLastTxRxResult(port_num, PROTOCOL_VERSION))
-elif dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION) != 0:
-    dynamixel.printRxPacketError(PROTOCOL_VERSION, dynamixel.getLastRxPacketError(port_num, PROTOCOL_VERSION))
-
-# Close port
-dynamixel.closePort(port_num)
-
-
 
 # Bulk_Read_Write 노드
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import Float64  # team4 QuadrupedControllerNode 노드 참조
-from sensor_msgs.msg import Imu 
-
 class Bulk_Read_Write(Node):
     def __init__(self):
         super().__init__('bulk_read_write')
+        # 여 
 
         self.dxl_goal_position = dxl_goal_position
         self.dxl_id = dxl_id
@@ -331,9 +245,6 @@ class Bulk_Read_Write(Node):
                 DXL_LOBYTE(DXL_HIWORD(self.dxl_goal_position[i])),
                 DXL_HIBYTE(DXL_HIWORD(self.dxl_goal_position[i]))
             ]
-            self.groupBulkWrite.addParam(motor_id, ADDR_GOAL_POSITION, param_goal_position)
-        self.groupBulkWrite.txPacket()
-        self.groupBulkWrite.clearParam()
 
 
     # 다리 각도 실제값 (A2), 센서값 (B) 발행
@@ -376,6 +287,6 @@ def main(args=None):
         node.portHandler.closePort()
         rclpy.shutdown()
     
-    if __name__ == '__main__':
-        main()
+if __name__ == '__main__':
+    main()
 
