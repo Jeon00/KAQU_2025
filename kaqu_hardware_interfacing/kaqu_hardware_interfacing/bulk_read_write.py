@@ -307,9 +307,35 @@ dynamixel.closePort(port_num)
 
 # Transform
 # 아직 보내는 쪽의 msg 형식이 정해지지 않아 임의로 callback만 작성함. 
+def sim_to_real_transform(joint_angles):
+    new_angles = [0]*12
+
+    for i in range(4):
+        joint_angles[3*i]
+        alpha = joint_angles[3*i+1]
+        beta1 = joint_angles[3*i+2]
+
+        # 이 부분을 받아올지 코드에 박아둘지는 고민 필요
+        l1 = 130
+        l2 = 36
+        l3 = 130
+        l4a = 36
+        lhip = 31.5
+
+        _a = -l1*cos(alpha)-l4a*cos(beta1)
+        _b = lhip -l1*sin(alpha) -l4a*sin(beta1)
+        _c = (l3**2)
+
+
+        
+def real_to_sim_transform()
+
+
 def kaqu_transform(msg):
+    new_angles = [0]*12
     # 라디안 -> 라디안
     for i in range(4):
+        roll = msg.joint_angle[3*i]
         alpha = msg.joint_angle[3*i +1]
         beta1 = msg.joint_angle[3*i+ 2]
 
@@ -331,12 +357,24 @@ def kaqu_transform(msg):
         else:
             beta2 = atan2((_b-sqrt(_b**2-(_a+_c)**2))/(_a+_c))
         
-        new_angles = [0]*12
-        
+        new_angles[3*i]
+        new_angles[3*i+1] = alpha
+        new_angles[3*i+2] = beta2
+    
+
 
     # 라디안 -> 모터값
 
 # 구한 각도가 말이 되는가?
+# 위에서 구한 두 해는 leg4a가 반대로 뒤집어지는 상황일 것. 
+# 이는 leg3의 각도가 90도(혹은 더 작은 각도)를 넘어가지 않게 하면 됨. 
+# 여기서의 계산량을 좀 줄이고 싶은데, 이거 말고 방법이 있나 싶음
 def is_right_angle(beta):
+    
+    _a = 
+    _b = 
+    _c = 
+    if theta > 90:
+
 
     return True
