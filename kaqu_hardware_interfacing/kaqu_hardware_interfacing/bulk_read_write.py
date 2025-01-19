@@ -207,6 +207,68 @@ for i in dxl_id:
         quit()
 
 # 여기까지 초기 세팅
+# 아래의 while문 내부 내용을 msg 콜백으로 묶어서 써도 될듯
+# 하드웨어, 변환 담당 조는 ROS조가 노드를 완성하기 전까지 callback 함수 형태로 만들어 두기
+
+# 값을 보내고 받는 함수들, 이걸 callback으로 하면 될듯.
+# while 1:
+def timer_callback(self): # (25.01.17) callback_bulkReadWrite -> timer_callback으로 수정 // msg->self로 수정함
+                          # timer_period 1/50-1/80 sec로 생각 중 -> 소프2팀이슈 HRI 아래 링크 참고
+
+    # print("Press any key to continue! (or press ESC to quit!)")
+    # if getch() == chr(0x1b):
+    #     break
+
+    # 214 ~ 230 일단 주석 처리
+    # for i in range(len(dxl_goal_position)):
+    #     #메시지에서 Goal Position 받아옴
+    #     dxl_goal_position[i] = msg.goal_position[i]
+    #     #Goal Position 값을 byte단위의 배열로 쪼갬
+    #     param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position[i])), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position[i])), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position[i]))]
+    #     #Goal position을 BulkWrite parameter 저장소에 추가
+    #     dxl_addparam_result = groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
+    #     if dxl_addparam_result != True:
+    #         print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
+    #         #quit()
+    #         return
+    
+    #     # Bulkwrite Goal Position
+    #     dxl_comm_result = groupBulkWrite.txPacket()
+    #     if dxl_comm_result != COMM_SUCCESS:
+    #         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+
+
+    # Clear bulkwrite parameter storage
+    groupBulkWrite.clearParam()
+
+    #while 1: (25.01.17) timer_callback함수 안에 들어갈 내용이라 while문을 제거함
+    # Present Position값 Bulkread
+    dxl_comm_result = groupBulkRead.txRxPacket()
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+
+    for i in range(len(dxl_id)):
+        # Bulkread한 데이터가 사용 가능한지 확인
+        dxl_getdata_result = groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+        if dxl_getdata_result != True:
+            print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
+            #quit()
+            return
+
+        # Present Position값 가져오기
+        dxl_present_position[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+            
+        # Present Position 출력
+        print("[ID:%03d] Present Position : %d" % (dxl_id[i], dxl_present_position[i]))
+        
+    # 현재 모터값과 목표 모터값의 차이가 Threshold보다 크면(모든 모터가 목표 모터값에 도달하면) 반복문을 빠져나감
+    flag = 0
+    for i in range(len(dxl_present_position)) :
+        if abs(dxl_goal_position[i] - dxl_present_position[i]) > DXL_MOVING_STATUS_THRESHOLD:
+            flag == 1
+            break
+    if flag == 0 :
+        break
 
 # Bulk_Read_Write 노드
 class Bulk_Read_Write(Node):
