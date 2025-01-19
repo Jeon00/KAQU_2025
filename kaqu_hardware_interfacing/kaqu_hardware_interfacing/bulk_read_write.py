@@ -125,7 +125,6 @@ RL1_ID                     = 41
 RL2_ID                     = 42
 RL3_ID                     = 43
 
-BAUDRATE                    = 1000000
 DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')        # Check which port is being used on your controller
                                                             # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0"
 
@@ -150,7 +149,9 @@ TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
 
 index = 0
+flag = 0                          # Threshold 반복문용 변수
 dxl_goal_position = [0]*12        # 다이나믹셀 각도로 변환된 Goal position 넣을 곳
+dxl_present_position = [0]*12     # 모터에서 Present Position 값 받아올 곳
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
 dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
 
