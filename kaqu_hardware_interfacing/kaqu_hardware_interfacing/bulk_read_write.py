@@ -7,15 +7,18 @@
 # 1. USB 시리얼 번호 찾기
 
 # Tuning
-# DXL_MOVING_STATUS_THRESHOLD
+# 움직이기 위한 최소 각도 차이 : DXL_MOVING_STATUS_THRESHOLD
+# IK 풀때 에러 : 
 
 import os
 import rclpy
 from rclpy.node import Node
+import numpy as np
+from math import cos, sin, tan, atan2, acos, sqrt, pi
 from std_msgs.msg import Float64  # team4 QuadrupedControllerNode 노드 참조
 from sensor_msgs.msg import Imu 
 
-# 이부분 지피티에게 물어보니 입출력 형식을 담당하는 부분이라고 함
+# 이부분 지피티에게 물어보니 OS가 뭔지 판단하는 부분이라고 함
 if os.name == 'nt':
     import msvcrt
     def getch():
@@ -211,6 +214,7 @@ class Bulk_Read_Write(Node):
             self.real_angle_publisher.publish(angle_msg)
 
         sensor_msg = Imu()
+        # 주의 : real to sim 추가해야 함
         self.sensor_data_publisher.publish(sensor_msg)
         # ------------------------------------------
 
@@ -260,11 +264,54 @@ class Bulk_Read_Write(Node):
         # if not (abs(dxl_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
         #   break
 
-    def sim_to_real_transform(cmd_angle):
+    # 굳이 self를 넣어야 할까요?
+    def sim_to_real_transform(self, cmd_angle):
         real_angle = [0]*12
         # IK 풀기
-        # 맞는지 확인
-        # 라디안 -> 다이나믹셀 각도로 변환
+        for i in range(4):
+            roll = cmd_angle[3*i]
+            alpha = cmd_angle[3*i+1]
+            beta1 = cmd_angle[3*i+2]
+
+            # 이 부분을 코드에 박아둘까요 말까요
+            l1 = 130.0
+            l2 = 36.0
+            l3 = 130.0
+            l4a = 36.0
+            lhip = 31.5
+
+            _a = -l1*cos(alpha)-l4a*cos(beta1)
+            _b = lhip-l4a*sin(beta1)-l1*sin(alpha)
+            _c = (l3**2-l2**2-_a**2-_b**2)/(2*l2)
+
+            # 판별식
+            if (_b**2-_c**2+_a**2)<0:
+                print("something wrong with %03d th leg IK" %(i+1))
+                break
+            else:
+                pass
+
+            beta2 = 2*atan2(_b-sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+
+            # 말이 되는 각도인지 확인
+            if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<0:
+                beta2 = 2*atan2(_b+sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+                if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<0:
+                    print("something wrong with %03d th leg IK" %(i+1))
+                    break
+                else: 
+                    pass
+            else:
+                pass
+            # 각도 넣기(라디안->다이나믹셀 각도)
+            # 주의 : 모터 설치 각도를 고려해야 함. 
+            real_angle[3*i] = roll*DXL_MAXIMUM_POSITION_VALUE/2*pi
+            real_angle[3*i+1] = alpha*DXL_MAXIMUM_POSITION_VALUE/2*pi
+            real_angle[3*i+2] = beta2*DXL_MAXIMUM_POSITION_VALUE/2*pi
+        # 모터 설치 각도 확인하는 부분 넣어야 함. 
+
+        
+         
         return real_angle
     def real_to_sim_transform(present_angle):
         sim_angle = [0]*12
@@ -294,9 +341,8 @@ def main(args=None):
                 print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
             elif dxl_error != 0:
                 print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-# Close port
-portHandler.closePort()
+        # Close port
+        portHandler.closePort()
     
 if __name__ == '__main__':
     main()
