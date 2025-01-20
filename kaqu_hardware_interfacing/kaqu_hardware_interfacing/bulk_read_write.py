@@ -81,8 +81,8 @@ DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status thresh
 
 index = 0
 flag = 0                          # Threshold 반복문용 변수
-dxl_goal_position = [0]*12        # 다이나믹셀 각도로 변환된 Goal position 넣을 곳 #주의
-dxl_present_position = [0]*12     # 모터에서 Present Position 값 받아올 곳
+# dxl_goal_position = [0]*12        # 다이나믹셀 각도로 변환된 Goal position 넣을 곳 #주의
+# dxl_present_position = [0]*12     # 모터에서 Present Position 값 받아올 곳
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
 dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
 
@@ -143,11 +143,13 @@ class Bulk_Read_Write(Node):
         # self.dxl_goal_position = dxl_goal_position
         
         self.dxl_id = dxl_id
+        self.portHandler = portHandler
+        self.packetHandler = packetHandler
         self.groupBulkWrite = groupBulkWrite
         self.groupBulkRead = groupBulkRead
 
         self.last_command = [0]*12 #무릎
-        self.dxl_goal_position = [0]*12 #엉덩이
+        self.goal_position = [0]*12 #엉덩이
         self.last_read_joint = [0]*12 #현재
         self.last_read_sensor = [0]*2 # 일단 뭐가 될지 모르겠는데 배열 형태로 보내면 어떨까
 
@@ -159,11 +161,6 @@ class Bulk_Read_Write(Node):
         # 주의 : msg타입, 토픽이름 수정해야 함. 
         self.control_subscriber = self.create_subscription(
             Float64, 'control_leg_angle', self.control_callback, 10)
-        
-        # 다리 각도 실제값 (A2), 센서값 (B)
-        # 주의 : msg타입, 토픽이름 수정해야 함. 
-        self.present_angle_publisher = self.create_publisher(
-            Float64, 'real_leg_angle', 10)
         self.sensor_data_publisher = self.create_publisher(
             Imu, 'sensor_data', 10)
         
@@ -185,8 +182,14 @@ class Bulk_Read_Write(Node):
         
         # last command update
         self.last_command = real_angle
-
-    # 다리 각도 실제값 (A2), 센서값 (B) 발행
+  
+        # 다리 각도 실제값 (A2), 센서값 (B)
+        # 주의 : msg타입, 토픽이름 수정해야 함. 
+        self.present_angle_publisher = self.create_publisher(
+            Float64, 'real_leg_angle', 10)
+      
+    # ROS로 다리 각도 실제값 (A2), 센서값 (B) 발행
+    # 주의 : 함수 구조 살펴봐야 함. 
     def publish_data(self):
         # 모터 현재 위치 읽기
         self.groupBulkRead.txRxPacket()
@@ -210,52 +213,65 @@ class Bulk_Read_Write(Node):
         sensor_msg = Imu()
         self.sensor_data_publisher.publish(sensor_msg)
         # ------------------------------------------
-    def timer_callback(self): # (25.01.17) callback_bulkReadWrite -> timer_callback으로 수정 // msg->self로 수정함
-                          # timer_period 1/50-1/80 sec로 생각 중 -> 소프2팀이슈 HRI 아래 링크 참고
 
+    def timer_callback(self):
+        # 읽기 먼저
+        dxl_comm_result = self.groupBulkRead.txRxPacket()
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
 
-
-    # Clear bulkwrite parameter storage
-    groupBulkWrite.clearParam()
-
-    #while 1: (25.01.17) timer_callback함수 안에 들어갈 내용이라 while문을 제거함
-    # Present Position값 Bulkread
-    dxl_comm_result = groupBulkRead.txRxPacket()
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-
-    for i in range(len(dxl_id)):
-        # Bulkread한 데이터가 사용 가능한지 확인
-        dxl_getdata_result = groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-        if dxl_getdata_result != True:
-            print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
-            #quit()
-            return
-
-        # Present Position값 가져오기
-        dxl_present_position[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-            
-        # Present Position 출력
-        print("[ID:%03d] Present Position : %d" % (dxl_id[i], dxl_present_position[i]))
+        for i in range(len(dxl_id)):
+            dxl_getdata_result = self.groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+            if dxl_getdata_result != True:
+                print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
+                # quit()
+                return
+            # present pos 가져오기
+            self.last_read_joint = self.groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+            print("[ID:%03d] Present Position : %d" % (dxl_id[i], self.last_read_joint[i]))
         
-    # 현재 모터값과 목표 모터값의 차이가 Threshold보다 크면(모든 모터가 목표 모터값에 도달하면) 반복문을 빠져나감
-    flag = 0
-    for i in range(len(dxl_present_position)) :
-        if abs(dxl_goal_position[i] - dxl_present_position[i]) > DXL_MOVING_STATUS_THRESHOLD:
-            flag == 1
-            break
-    if flag == 0 :
-        pass
+        # 쓰기 
+        for i in range(len(self.goal_position)):
+
+            # 마지막 명령값 받아오기
+            self.goal_position[i] = self.last_command[i]
+            # byte 단위의 배열로 쪼개기
+            param_goal_position = [DXL_LOBYTE(DXL_LOWORD(self.goal_position[i])), 
+                                   DXL_HIBYTE(DXL_LOWORD(self.goal_position[i])), 
+                                   DXL_LOBYTE(DXL_HIWORD(self.goal_position[i])), 
+                                   DXL_HIBYTE(DXL_HIWORD(self.goal_position[i]))]
+            # Bulkwrite 파라미터 저장소에 추가
+            dxl_addparam_result = self.groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
+            if dxl_addparam_result != True:
+                print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
+                return
+            
+            # BulkWrite Goal Position
+            dxl_comm_result = self.groupBulkWrite.txPacket()
+            if dxl_comm_result != COMM_SUCCESS:
+                print("%s" %self.packetHandler.getTxRxResult(dxl_comm_result))
+        # 파라미터 저장소 비우기
+        self.groupBulkWrite.clearParam()
+        
+        # 주의 : 샘플 코드를 보면 while문이 2중으로 되어 있음
+        # 안쪽의 while 문은 모터가 지정한 위치에 도달할 떄까지 기다렸다가 다음 커멘드를 업데이트함. 
+        # 지금은 그냥 한번 딱 찍어주고 모터가 알아서 거기까지 가는 내용. 
+        # 아래의 코드로 업데이트하는데, 돌려보고 이게 필요한지 확인해봐야 함. 
+        # if not (abs(dxl_goal_position[index] - dxl1_present_position) > DXL_MOVING_STATUS_THRESHOLD):
+        #   break
 
     def sim_to_real_transform(cmd_angle):
         real_angle = [0]*12
         # IK 풀기
         # 맞는지 확인
+        # 라디안 -> 다이나믹셀 각도로 변환
         return real_angle
     def real_to_sim_transform(present_angle):
         sim_angle = [0]*12
+        # 다이나믹셀 각도 -> 라디안으로 변환
         # IK 풀기
         # 맞는지 확인
+        
         return sim_angle
 
 
@@ -264,24 +280,25 @@ def main(args=None):
     node = Bulk_Read_Write()
 
     try:
-        node.spin_node()
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.get_logger().info("Shutting down Bulk_Read_Write Node...")
     finally:
         node.portHandler.closePort()
         rclpy.shutdown()
+
+        # Disable Dynamixel Torque
+        for i in dxl_id:
+            dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
+            if dxl_comm_result != COMM_SUCCESS:
+                print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+            elif dxl_error != 0:
+                print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+# Close port
+portHandler.closePort()
     
 if __name__ == '__main__':
     main()
 
-# Disable Dynamixel Torque
-for i in dxl_id:
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, TORQUE_DISABLE)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-# Close port
-portHandler.closePort()
