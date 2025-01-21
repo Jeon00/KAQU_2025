@@ -90,13 +90,17 @@ IK_ERROR_RANGE = 0.1
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
 dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
 
-# 계산에 필요한 링크 길이
+# 계산에 필요한 하드웨어 스펙
 # 이 부분을 코드에 박아둘까요 말까요
 l1 = 130.0
 l2 = 36.0
 l3 = 130.0
 l4a = 36.0
 lhip = 31.5
+
+# 주의
+motor_direction = [0]*12
+
 
 # Initialize PortHandler instance
 portHandler = PortHandler(DEVICENAME)
@@ -129,6 +133,7 @@ else:
     quit()
 
 # 각 모터 토크 켜기
+# 주의 : 여기에 현재 위치 읽고 거기를 초기값으로 세팅해야 함.
 for i in dxl_id:
     dxl_comm_result, dxl_error= packetHandler.write1ByteTxRx(portHandler, i, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
     if dxl_comm_result != COMM_SUCCESS:
@@ -315,7 +320,7 @@ class Bulk_Read_Write(Node):
             rad_angle[i] = present_angle[i]*2*pi/DXL_MAXIMUM_POSITION_VALUE
         # 라디안 값 보정
         # dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
-        for i in range(2): # 0 : Front, 1 : Rear
+        for i in range(2): # 0 : Front, 1 : Rearㄴ
             for j in range(2): # 0 : Right, 1: left
                 # hip 보정
                 # fr일때 -pi/4 00
