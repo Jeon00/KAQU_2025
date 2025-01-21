@@ -8,14 +8,15 @@
 
 # Tuning
 # 움직이기 위한 최소 각도 차이 : DXL_MOVING_STATUS_THRESHOLD
-# IK 풀때 에러 : 
+# IK 풀때 에러 : IK_ERROR_RANGE
+# timer period
 
 import os
 import rclpy
 from rclpy.node import Node
 import numpy as np
 from math import cos, sin, tan, atan2, acos, sqrt, pi
-from std_msgs.msg import Float64  # team4 QuadrupedControllerNode 노드 참조
+from sensor_msgs.msg import JointState
 from sensor_msgs.msg import Imu 
 
 # 이부분 지피티에게 물어보니 OS가 뭔지 판단하는 부분이라고 함
@@ -82,12 +83,20 @@ TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
 
-index = 0
-flag = 0                          # Threshold 반복문용 변수
-# dxl_goal_position = [0]*12        # 다이나믹셀 각도로 변환된 Goal position 넣을 곳 #주의
-# dxl_present_position = [0]*12     # 모터에서 Present Position 값 받아올 곳
+IK_ERROR_RANGE = 0.1
+
+# 주의 : 포지션 모드 확장 모드로 변경 필요
+
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
 dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
+
+# 계산에 필요한 링크 길이
+# 이 부분을 코드에 박아둘까요 말까요
+l1 = 130.0
+l2 = 36.0
+l3 = 130.0
+l4a = 36.0
+lhip = 31.5
 
 # Initialize PortHandler instance
 portHandler = PortHandler(DEVICENAME)
@@ -153,8 +162,8 @@ class Bulk_Read_Write(Node):
 
         self.last_command = [0]*12 #무릎
         self.goal_position = [0]*12 #엉덩이
-        self.last_read_joint = [0]*12 #현재
-        self.last_read_sensor = [0]*2 # 일단 뭐가 될지 모르겠는데 배열 형태로 보내면 어떨까
+        self.last_read_joint_dxl = [0]*12 #현재
+        self.last_read_sensor = [0]*3 # 일단 뭐가 될지 모르겠는데 배열 형태로 보내면 어떨까
 
         # 주의 : openCR 연결해보고 timer period 조절해야 함
         data_pub_period = 0.5
@@ -162,10 +171,9 @@ class Bulk_Read_Write(Node):
 
         # 다리 각도 제어값(엉덩이)
         # 주의 : msg타입, 토픽이름 수정해야 함. 
-        self.control_subscriber = self.create_subscription(
-            Float64, 'control_leg_angle', self.control_callback, 10)
-        self.sensor_data_publisher = self.create_publisher(
-            Imu, 'sensor_data', 10)
+        self.control_subscriber = self.create_subscription(JointState, 'control_leg_angle', self.control_callback, 10)
+        self.present_angle_publisher = self.create_publisher(JointState, 'real_leg_angle', 10)
+        self.imu_data_publisher = self.create_publisher(Imu, 'imu_data', 10)
         
         # ROS로 현재 상황을 보내는 퍼블리셔
         self.pos_timer = self.create_timer(data_pub_period, self.publish_data)
@@ -181,42 +189,36 @@ class Bulk_Read_Write(Node):
         # cmd_vel = msg.velocity
 
         # Transform
-        real_angle = self.sim_to_real_transform(cmd_angle)
+        goal_position = self.sim_to_real_transform(cmd_angle)
         
-        # last command update
-        self.last_command = real_angle
-  
-        # 다리 각도 실제값 (A2), 센서값 (B)
-        # 주의 : msg타입, 토픽이름 수정해야 함. 
-        self.present_angle_publisher = self.create_publisher(
-            Float64, 'real_leg_angle', 10)
-      
+        # last command update(다이나믹셀 각도)
+        for i in range(goal_position):
+            if goal_position[i]<0:
+                print("something wrong with transform")
+                return
+            else:
+                pass
+        self.last_command = goal_position
+
     # ROS로 다리 각도 실제값 (A2), 센서값 (B) 발행
     # 주의 : 함수 구조 살펴봐야 함. 
     def publish_data(self):
-        # 모터 현재 위치 읽기
-        self.groupBulkRead.txRxPacket()
-        total_position = 0
-        valid_count = 0
 
-        for motor_id in self.dxl_id:
-            if self.groupBulkRead.isAvailable(motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION):
-                present_position = self.groupBulkRead.getData(motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-                total_position += present_position
-                valid_count += 1
-                self.get_logger().info(f"Motor {motor_id} position: {present_position}")
+        angle_msg = JointState()
+        imu_msg = Imu()
+
+        # 읽은 값 받아오기
+        real_angle = self.real_to_sim_transform(self.last_read_joint_dxl)
+
+        # 모터값 라디안으로 변환하여 넣기
+        for i in range(self.last_read_joint_dxl):
+            angle_msg.position[i] = real_angle[i]*2*pi/DXL_MAXIMUM_POSITION_VALUE
+
+        # 받아온 센서값 넣기
         
-        # A2, B 발행 (여기 다시 수정해야함) ---------
-        if valid_count > 0: # 정상적으로 모터를 읽어온 경우
-            average_position = total_position / valid_count
-            angle_msg = Float64()
-            angle_msg.data = (average_position / DXL_MAXIMUM_POSITION_VALUE) * 360.0
-            self.real_angle_publisher.publish(angle_msg)
-
-        sensor_msg = Imu()
-        # 주의 : real to sim 추가해야 함
-        self.sensor_data_publisher.publish(sensor_msg)
-        # ------------------------------------------
+        # 퍼블리시
+        self.present_angle_publisher.publish(angle_msg)
+        self.imu_data_publisher.publish(imu_msg)
 
     def timer_callback(self):
         # 읽기 먼저
@@ -231,8 +233,8 @@ class Bulk_Read_Write(Node):
                 # quit()
                 return
             # present pos 가져오기
-            self.last_read_joint = self.groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-            print("[ID:%03d] Present Position : %d" % (dxl_id[i], self.last_read_joint[i]))
+            self.last_read_joint_dxl[i] = self.groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+            print("[ID:%03d] Present Position : %d" % (dxl_id[i], self.last_read_joint_dxl[i]))
         
         # 쓰기 
         for i in range(len(self.goal_position)):
@@ -273,13 +275,6 @@ class Bulk_Read_Write(Node):
             alpha = cmd_angle[3*i+1]
             beta1 = cmd_angle[3*i+2]
 
-            # 이 부분을 코드에 박아둘까요 말까요
-            l1 = 130.0
-            l2 = 36.0
-            l3 = 130.0
-            l4a = 36.0
-            lhip = 31.5
-
             _a = -l1*cos(alpha)-l4a*cos(beta1)
             _b = lhip-l4a*sin(beta1)-l1*sin(alpha)
             _c = (l3**2-l2**2-_a**2-_b**2)/(2*l2)
@@ -294,9 +289,9 @@ class Bulk_Read_Write(Node):
             beta2 = 2*atan2(_b-sqrt(_b**2-_c**2+_a**2)/(_a+_c))
 
             # 말이 되는 각도인지 확인
-            if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<0:
+            if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<-IK_ERROR_RANGE:
                 beta2 = 2*atan2(_b+sqrt(_b**2-_c**2+_a**2)/(_a+_c))
-                if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<0:
+                if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<-IK_ERROR_RANGE:
                     print("something wrong with %03d th leg IK" %(i+1))
                     break
                 else: 
@@ -305,22 +300,84 @@ class Bulk_Read_Write(Node):
                 pass
             # 각도 넣기(라디안->다이나믹셀 각도)
             # 주의 : 모터 설치 각도를 고려해야 함. 
-            real_angle[3*i] = roll*DXL_MAXIMUM_POSITION_VALUE/2*pi
-            real_angle[3*i+1] = alpha*DXL_MAXIMUM_POSITION_VALUE/2*pi
-            real_angle[3*i+2] = beta2*DXL_MAXIMUM_POSITION_VALUE/2*pi
-        # 모터 설치 각도 확인하는 부분 넣어야 함. 
+            real_angle[3*i] = int(roll*DXL_MAXIMUM_POSITION_VALUE/2*pi)
+            real_angle[3*i+1] = int(alpha*DXL_MAXIMUM_POSITION_VALUE/2*pi)
+            real_angle[3*i+2] = int(beta2*DXL_MAXIMUM_POSITION_VALUE/2*pi)
+        # 주의 : 모터 설치 각도 확인하는 부분 넣어야 함. 
 
-        
-         
         return real_angle
-    def real_to_sim_transform(present_angle):
+    
+    def real_to_sim_transform(self, present_angle):
+        rad_angle = [0]*12
         sim_angle = [0]*12
         # 다이나믹셀 각도 -> 라디안으로 변환
-        # IK 풀기
-        # 맞는지 확인
+        for i in range(len(dxl_id)):
+            rad_angle[i] = present_angle[i]*2*pi/DXL_MAXIMUM_POSITION_VALUE
+        # 라디안 값 보정
+        # dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
+        for i in range(2): # 0 : Front, 1 : Rear
+            for j in range(2): # 0 : Right, 1: left
+                # hip 보정
+                # fr일때 -pi/4 00
+                # fl일때 -3*pi/4 01
+                # rr일때 -3*pi/4 10
+                # rl일때 -pi/4 11
+                if (i+j)==1:
+                    rad_angle[6*i+3*j] = rad_angle[6*i+3*j] -3*pi/4
+                else:
+                    rad_angle[6*i+3*j] = rad_angle[6*i+3*j] -pi/4
+                # alpha 보정
+                # 주의 : 반전 어떻게 구현할지?
+                # fr일때 그대로 00
+                # fl일때 반전 01
+                # rr일때 -pi 10
+                # rl일때 -pi, 반전 11
+                # beta2 보정 : alpha와 같음
+                if i ==0 :
+                    # 의미는 없는데 나중에 쓸일 있을까봐 넣어둠
+                    rad_angle[6*i+3*j+1] = rad_angle[6*i+3*j+1]
+                    rad_angle[6*i+3*j+2] = rad_angle[6*i+3*j+2]
+                else:
+                    rad_angle[6*i+3*j+1] = rad_angle[6*i+3*j+1] -pi
+                    rad_angle[6*i+3*j+2] = rad_angle[6*i+3*j+2] -pi
         
-        return sim_angle
+        # IK 풀기
+        # 주의 : IK 풀기 전에 모터 각도 고려해서 절대좌표계로 바꿔줘야 함
+        for i in range(4):
+            roll = rad_angle[3*i]
+            alpha = rad_angle[3*i+1]
+            beta2 = rad_angle[3*i+2]
 
+            _a = l2*cos(beta2)-l1*cos(alpha)
+            _b = lhip+l2*sin(beta2)-l1*sin(alpha)
+            _c = -(l3**2-l4a**2-_a**2-_b**2)/(2*l4a)
+                    # 판별식
+            if (_b**2-_c**2+_a**2)<0:
+                print("something wrong with %03d th leg IK" %(i+1))
+                break
+            else:
+                pass
+
+            beta1 = 2*atan2(_b-sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+
+            # 말이 되는 각도인지 확인
+            if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<-IK_ERROR_RANGE:
+                beta2 = 2*atan2(_b+sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+                if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<-IK_ERROR_RANGE:
+                    print("something wrong with %03d th leg IK" %(i+1))
+                    break
+                else: 
+                    pass
+            else:
+                pass
+            # 각도 넣기(라디안->다이나믹셀 각도)
+            # 주의 : 모터 설치 각도를 고려해야 함. 
+            sim_angle[3*i] = roll
+            sim_angle[3*i+1] = alpha
+            sim_angle[3*i+2] = beta1
+        # 주의 : 모터 설치 각도 확인하는 부분 넣어야 함. 
+
+        return sim_angle
 
 def main(args=None):
     rclpy.init(args=args)
