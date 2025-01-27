@@ -20,6 +20,10 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'RobotManagerNode = kaqu_controller.KaquCmdManager.RobotManagerNode:main',
+            'QuadrupedControllerNode = kaqu_controller.KaquCmdManager.AnglePublisher:main',
+            'debug = kaqu_controller.KaquCmdManager.test:main'
+            
         ],
     },
 )
