@@ -99,12 +99,9 @@ RL1_ID                     = 41
 RL2_ID                     = 42
 RL3_ID                     = 43
 
-DEVICENAME                  = "/dev/ttyUSB0".encode('utf-8')        # Check which port is being used on your controller
-                                                            # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0"
-
 # Use the actual port assigned to the U2D2.
 # ex) Windows: "COM*", Linux: "/dev/ttyUSB*", Mac: "/dev/tty.usbserial-*"
-DEVICENAME                  = '/dev/ttyUSB0'
+DEVICENAME                  = '/dev/ttyACM0'
 IK_ERROR_RANGE = 0.1
 
 # 주의 : 포지션 모드 확장 모드로 변경 필요
