@@ -26,6 +26,14 @@ from sensor_msgs.msg import JointState
 from sensor_msgs.msg import Imu 
 
 # 이부분 지피티에게 물어보니 OS가 뭔지 판단하는 부분이라고 함
+import rclpy
+from rclpy.node import Node
+import numpy as np
+from math import cos, sin, tan, atan2, acos, sqrt, pi
+from sensor_msgs.msg import JointState
+from sensor_msgs.msg import Imu 
+
+# 이부분 지피티에게 물어보니 OS가 뭔지 판단하는 부분이라고 함
 if os.name == 'nt':
     import msvcrt
     def getch():
@@ -48,6 +56,7 @@ from dynamixel_sdk import *  #다이나믹셀 라이브러리 사용
 MY_DXL = 'X_SERIES'  
 
 # Control table address
+# 다른 변수가 필요한 경우 e-manual로부터 여기에 적어놓고 시작
 # 다른 변수가 필요한 경우 e-manual로부터 여기에 적어놓고 시작
 if MY_DXL == 'X_SERIES' or MY_DXL == 'MX_SERIES':
     ADDR_TORQUE_ENABLE          = 64
@@ -88,6 +97,8 @@ PROTOCOL_VERSION            = 2.0
 # Default setting
 FR1_ID                     = 11                           
 FR2_ID                     = 12                           
+FR1_ID                     = 11                           
+FR2_ID                     = 12                           
 FR3_ID                     = 13
 FL1_ID                     = 21
 FL2_ID                     = 22
@@ -108,6 +119,18 @@ IK_ERROR_RANGE = 0.1
 
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
 dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
+
+# 계산에 필요한 하드웨어 스펙
+# 이 부분을 코드에 박아둘까요 말까요
+l1 = 130.0
+l2 = 36.0
+l3 = 130.0
+l4a = 36.0
+lhip = 31.5
+
+# 주의
+motor_direction = [0]*12
+
 
 # 계산에 필요한 하드웨어 스펙
 l1 = 130.0
