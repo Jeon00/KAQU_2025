@@ -31,6 +31,7 @@ from rclpy.node import Node
 import numpy as np
 from math import cos, sin, tan, atan2, acos, sqrt, pi
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import Imu 
 
 # 이부분 지피티에게 물어보니 OS가 뭔지 판단하는 부분이라고 함
@@ -140,7 +141,7 @@ l4a = 36.0
 lhip = 31.5
 
 angle_reverse = [1, 1, 1, -1, -1, -1, -1, 1, 1, 1, -1, -1]
-dxl_offset = [-pi/4, pi/4, pi/4, pi/4, -pi/4, -pi/4, pi/4, -pi/4, -pi/4, -pi/4, pi/4, pi/4] # sim->real 방향 기준으로 + 해주면 됨
+dxl_offset = [0, 0, 0, 0, 4095, 4095, 0, 0, 0, 0, 4095, 4095] # sim->real 방향 기준으로 + 해주면 됨
 
 # Initialize PortHandler, PacketHandler instance
 # Initialize GroupBulkWrite instance / Initialize GroupBulkRead instace for Present Position
@@ -264,17 +265,14 @@ class Bulk_Read_Write(Node):
         self.last_read_joint_dxl = [0]*12 #현재
         self.last_read_sensor = [0]*3 # 일단 뭐가 될지 모르겠는데 배열 형태로 보내면 어떨까
 
-        # self.dxl_offset = [-pi/4, pi/4, pi/4, pi/4, -pi/4, -pi/4, pi/4, -pi/4, -pi/4, -pi/4, pi/4, pi/4] # sim->real 방향 기준으로 + 해주면 됨
-        # self.angle_reverse = [1, 1, 1, -1, -1, -1, -1, 1, 1, 1, -1, -1]
-
         # 주의 : openCR 연결해보고 timer period 조절해야 함
         data_pub_period = 0.5
         control_period = 0.5
 
         # 다리 각도 제어값(엉덩이)
         # 주의 : msg타입, 토픽이름 수정해야 함. 
-        self.control_subscriber = self.create_subscription(JointState, 'control_leg_angle', self.control_callback, 10)
-        self.present_angle_publisher = self.create_publisher(JointState, 'real_leg_angle', 10)
+        self.control_subscriber = self.create_subscription(Float64MultiArray, 'joint_group_position_controller/commands', self.control_callback, 10)
+        self.present_angle_publisher = self.create_publisher(Float64MultiArray, 'real_leg_angle', 10)
         self.imu_data_publisher = self.create_publisher(Imu, 'imu_data', 10)
         
         # ROS로 현재 상황을 보내는 퍼블리셔
@@ -287,7 +285,7 @@ class Bulk_Read_Write(Node):
     # 다리 각도 제어값(A1) -> goal position
     def control_callback(self, msg):
         # msg 받는곳 주의
-        cmd_angle = msg.position
+        cmd_angle = msg.data
         # cmd_vel = msg.velocity
 
         # Transform
@@ -306,7 +304,7 @@ class Bulk_Read_Write(Node):
     # ROS로 다리 각도 실제값 (A2), 센서값 (B) 발행
     # 주의 : 함수 구조 살펴봐야 함. 
     def publish_data(self):
-        angle_msg = JointState()
+        angle_msg = Float64MultiArray()
         imu_msg = Imu()
 
         # 읽은 값 받아오기
@@ -314,7 +312,7 @@ class Bulk_Read_Write(Node):
 
         # 모터값 라디안으로 변환하여 넣기
         for i in range(self.last_read_joint_dxl):
-            angle_msg.position[i] = real_angle[i]
+            angle_msg.data[i] = real_angle[i]
 
         # 받아온 센서값 넣기
         
@@ -340,7 +338,6 @@ class Bulk_Read_Write(Node):
         
         # 쓰기 
         for i in range(len(self.goal_position)):
-
             # 마지막 명령값 받아오기
             self.goal_position[i] = self.last_command[i]
             # byte 단위의 배열로 쪼개기
@@ -375,14 +372,12 @@ class Bulk_Read_Write(Node):
         # 근데 Ik를 한 식으로 풀기 위해서는 아래의 과정을 거처야 함.
         # 반전됨 -> 반전안됨 -> IK 풀기 -> 반전됨 -> 모터에 전송
 
-        for i in range(len(dxl_id)):
-            cmd_angle[i] = angle_reverse[i]*cmd_angle[i] # 오프셋 없이 각도 반전만 
 
         # IK 풀기
         for i in range(4):
             roll = cmd_angle[3*i]
-            alpha = cmd_angle[3*i+1]
-            beta1 = cmd_angle[3*i+2]
+            alpha = cmd_angle[3*i+1]+pi
+            beta1 = pi-(-cmd_angle[3*i+2] - cmd_angle[3*i+1])
 
             _a = -l1*cos(alpha)-l4a*cos(beta1)
             _b = lhip-l4a*sin(beta1)-l1*sin(alpha)
@@ -395,11 +390,11 @@ class Bulk_Read_Write(Node):
             else:
                 pass
 
-            beta2 = 2*atan2(_b-sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+            beta2 = 2*atan2(_b-sqrt(_b**2-_c**2+_a**2),(_a+_c))
 
             # 말이 되는 각도인지 확인
             if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<(-IK_ERROR_RANGE):
-                beta2 = 2*atan2(_b+sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+                beta2 = 2*atan2(_b+sqrt(_b**2-_c**2+_a**2),(_a+_c))
                 if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<(-IK_ERROR_RANGE):
                     print("something wrong with %03d th leg IK" %(i+1))
                     break
@@ -409,14 +404,14 @@ class Bulk_Read_Write(Node):
                 pass
             # 각도 넣기(라디안->다이나믹셀 각도)
             # 주의 : 모터 설치 각도를 고려해야 함. 
-            real_angle[3*i] = int(roll*DXL_2PI/2*pi)
-            real_angle[3*i+1] = int(alpha*DXL_2PI/2*pi)
-            real_angle[3*i+2] = int(beta2*DXL_2PI/2*pi)
+            real_angle[3*i] = int(roll*DXL_2PI/(2*pi))
+            real_angle[3*i+1] = int(alpha*DXL_2PI/(2*pi))
+            real_angle[3*i+2] = int(beta2*DXL_2PI/(2*pi))
         for i in range(len(dxl_id)):
-            cmd_angle[i] = angle_reverse[i]*cmd_angle[i] + dxl_offset[i] # 다시 각도 반전 모터 방향에 따른 오프셋 적용
+            real_angle[i] = angle_reverse[i]*real_angle[i] + dxl_offset[i] # 다시 각도 반전 모터 방향에 따른 오프셋 적용
 
         return real_angle
-    
+
     def real_to_sim_transform(self, present_angle):
         rad_angle = [0]*12
         sim_angle = [0]*12
